@@ -16,12 +16,12 @@ Requires [Node](https://nodejs.org) ver10.17.0
 
 With [NPM](https://www.npmjs.com/)
 ```sh
-$ npm install --save-dev
+$ npm install --save-dev @wault/asset-packer
 ```
 
 ### API
 ```javascript
-import { processAssets } from 'asset-packer'
+import { processAssets } from '@wault/asset-packer'
 
 processAssets([
     { filename: 'file.ext', buffer: Buffer.from() }

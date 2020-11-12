@@ -1,5 +1,5 @@
 {
-  "name": "asset-packer",
+  "name": "@wault/asset-packer",
   "version": "0.0.1",
   "description": "Asset packing and optimization pipeline tools",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
   "bugs": {
     "url": "https://github.com/vallrand/asset-packer/issues"
   },
-  "homepage": "https://github.com/vallrand/asset-packer",
+  "homepage": "https://github.com/vallrand/asset-packer#readme",
   "dependencies": {
     "jpeg-js": "^0.4.2",
     "pngjs": "^6.0.0",
