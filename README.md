@@ -11,6 +11,17 @@ Requires [Node](https://nodejs.org) ver10.17.0
  - [pngjs](https://github.com/lukeapage/pngjs)
  - [jpeg-js](https://github.com/eugeneware/jpeg-js)
  - [pngquant](https://github.com/papandreou/node-pngquant)
+ 
+Note: `pngquant-bin` might require additional [dependencies](https://github.com/nodejs/node-gyp#option-1)
+Linux:
+```sh
+$ sudo apt-get install libpng-dev
+```
+Windows:
+```sh
+$ npm install --global --production windows-build-tools
+```
+or download [manually](https://support.microsoft.com/en-us/help/2977003/the-latest-supported-visual-c-downloads)
 
 ## Installation
 

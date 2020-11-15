@@ -6,8 +6,8 @@ export class Exporter {
     insert(sprite: Bitmap, x: number, y: number, rotate: boolean){
         const left = Math.max(0, sprite.frame.x)
         const top = Math.max(0, sprite.frame.y)
-        const right = Math.min(sprite.frame.x + sprite.frame.width, sprite.size.width)
-        const bottom = Math.min(sprite.frame.y + sprite.frame.height, sprite.size.height)
+        const right = Math.min(sprite.frame.x + sprite.frame.width, rotate ? sprite.height : sprite.width)
+        const bottom = Math.min(sprite.frame.y + sprite.frame.height, rotate ? sprite.width : sprite.height)
 
         this.spriteMap[sprite.filename] = {
             frame: {
