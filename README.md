@@ -44,8 +44,8 @@ processAssets([
     spritesheet: {
         prefix: '[hash]',
         trim: true,
-        extrude: 0,
-        scale: 1,
+        extrude: false,
+        downscale: 1,
         quality: [60, 80],
         pack: {
             maxWidth: 2048,

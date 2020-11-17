@@ -67,6 +67,25 @@ export class Bitmap {
             0, 0, left, top, target.width, target.height
         )
     }
+    static extrude(source: Bitmap, padding: number, x: number, y: number, width: number, height: number): Bitmap {
+        if(!padding) return source
+
+        const offset = Math.floor(0.5 * padding)
+        const left = Math.max(0, x - offset)
+        const top = Math.max(0, y - offset)
+        const right = Math.min(source.width, x + width + padding - offset)
+        const bottom = Math.min(source.height, y + height + padding - offset)
+        for(let c = x - 1; c >= left; c--)
+            Bitmap.copy(source, source, c + 1, top, c, top, 1, bottom - top)
+        for(let c = x + width + 1; c <= right; c++)
+            Bitmap.copy(source, source, c - 1, top, c, top, 1, bottom - top)
+        for(let r = y - 1; r >= top; r--)
+            Bitmap.copy(source, source, left, r + 1, left, r, right - left, 1)
+        for(let r = y + 1; r <= bottom; r++)
+            Bitmap.copy(source, source, left, r - 1, left, r, right - left, 1)
+        return source
+    }
+    //TODO: remove deprecated method
     static pad(source: Bitmap, padding: number, extrude: boolean): Bitmap {
         if(!padding) return source
 
@@ -114,35 +133,36 @@ export class Bitmap {
 
         return target
     }
-    //TODO: Use a different algorithm for better results if scale is not 1/2n
     static downsample(source: Bitmap, width: number, height: number): Bitmap {
         const target: Bitmap = new Bitmap(source.filename, width, height)
-        const round = (value: number) => (value + 0.49) << 0
         const scaleX = source.width / target.width
         const scaleY = source.height / target.height
-        const sampleWidth = round(scaleX)
-        const sampleHeight = round(scaleY)
-        const sampleArea = sampleWidth * sampleHeight
 
         for(let x = 0; x < target.width; x++)
         for(let y = 0; y < target.height; y++){
             const targetIndex = (target.width * y + x) * 4
-            const sourceIndex = round(x * scaleX) + round(y * scaleY) * source.width
             let red = 0, green = 0, blue = 0, alpha = 0
 
-            for(let sx = 0; sx < sampleWidth; sx++)
-            for(let sy = 0; sy < sampleHeight; sy++){
-                const index = (sourceIndex + x + y * source.width) * 4
-                red += source.data[index+0]
-                green += source.data[index+1]
-                blue += source.data[index+2]
-                alpha += source.data[index+3]
+            const left = x * scaleX
+            const right = (x + 1) * scaleX
+            const top = y * scaleY
+            const bottom = (y + 1) * scaleY
+            const sampleArea = (right - left) * (bottom - top)
+
+            for(let sx = left | 0; sx < right; sx++)
+            for(let sy = top | 0; sy < bottom; sy++){
+                const sourceIndex = (source.width * sy + sx) * 4
+                const area = (Math.min(sx + 1, right) - Math.max(sx, left)) * (Math.min(sy + 1, bottom) - Math.max(sy, top))
+                red += area * source.data[sourceIndex+0]
+                green += area * source.data[sourceIndex+1]
+                blue += area * source.data[sourceIndex+2]
+                alpha += area * source.data[sourceIndex+3]
             }
 
-            target.data[targetIndex+0] = round(red / sampleArea)
-            target.data[targetIndex+1] = round(green / sampleArea)
-            target.data[targetIndex+2] = round(blue / sampleArea)
-            target.data[targetIndex+3] = round(alpha / sampleArea)
+            target.data[targetIndex+0] = Math.round(red / sampleArea)
+            target.data[targetIndex+1] = Math.round(green / sampleArea)
+            target.data[targetIndex+2] = Math.round(blue / sampleArea)
+            target.data[targetIndex+3] = Math.round(alpha / sampleArea)
         }
 
         return target

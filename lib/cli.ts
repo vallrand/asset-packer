@@ -3,10 +3,11 @@ import path from 'path'
 import { listFiles } from './utilities'
 import { processAssets } from './index'
 
-module.exports = (async function(source?: string, destination?: string){
+module.exports = (async function(source?: string, destination?: string, resolution?: string){
     const basepath = process.cwd() || __dirname
     const sourceDirectory = path.resolve(basepath, source || './')
     const destinationDirectory = path.resolve(basepath, destination || './')
+    const downscale = parseFloat(resolution as any) || 1
 
     const filenames = await listFiles(sourceDirectory)
     const files = await Promise.all(filenames.map(async filename => {
@@ -16,7 +17,7 @@ module.exports = (async function(source?: string, destination?: string){
             filename: path.relative(sourceDirectory, filename).replace(/\\/g, '/')
         }
     }))
-    console.log('\x1b[34m%s\x1b[0m', `Processing ${files.length} files...`)
+    console.log('\x1b[34m%s\x1b[0m', `Processing ${files.length} files(${downscale})...`)
     const outputFiles = await processAssets(files, {
         base64: {
             prefix: '[hash]',
@@ -25,12 +26,12 @@ module.exports = (async function(source?: string, destination?: string){
         spritesheet: {
             prefix: '[hash]',
             trim: true,
-            extrude: 0,
-            scale: 1,
+            extrude: false,
+            downscale: downscale,
             quality: [60, 80],
             pack: {
-                maxWidth: 2048,
-                maxHeight: 2048,
+                maxWidth: downscale * 4096,
+                maxHeight: downscale * 4096,
                 padding: 0,
                 border: 0,
                 pow2: true,

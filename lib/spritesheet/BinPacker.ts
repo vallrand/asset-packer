@@ -51,7 +51,7 @@ export class BinPacker<T> {
                 if(bins[j].insert(item, item.width, item.height))
                     continue items
             }
-            throw new Error(`Image ${item.width}x${item.height} exceeds spritesheet limits!`)
+            throw new Error(`Image ${item.width}x${item.height} exceeds ${bins[0].options.maxWidth}x${bins[0].options.maxHeight}!`)
         }
         return bins
     }

@@ -10,8 +10,8 @@ import { BinPacker, BinPackerOptions } from './BinPacker'
 export interface SpritesheetOptions {
     prefix: string
     trim: boolean
-    extrude: number
-    scale: number
+    extrude: boolean
+    downscale: number
     pack: Partial<BinPackerOptions>
     quality: [number, number]
 }
@@ -23,8 +23,8 @@ export async function generateSpritesheet(
     const options: SpritesheetOptions = {
         prefix: '[hash]',
         trim: true,
-        extrude: 0,
-        scale: 1,
+        extrude: false,
+        downscale: 1,
         pack: {},
         quality: [60, 80],
         ...spritesheetOptions
@@ -45,13 +45,12 @@ export async function generateSpritesheet(
     }
     console.log('\x1b[34m%s\x1b[0m', `Processing ${sprites.length} images...`)
     for(let i = 0; i < sprites.length; i++){
-        if(options.scale < 1) sprites[i] = Bitmap.downsample(
+        if(options.downscale < 1) sprites[i] = Bitmap.downsample(
             sprites[i],
-            Math.floor(sprites[i].width * options.scale),
-            Math.floor(sprites[i].height * options.scale)
+            Math.floor(sprites[i].width * options.downscale),
+            Math.floor(sprites[i].height * options.downscale)
         )
         if(options.trim) sprites[i] = Bitmap.trim(sprites[i], 0)
-        if(options.extrude) sprites[i] = Bitmap.pad(sprites[i], options.extrude, true)
     }
     console.log('\x1b[34m%s\x1b[0m', `Packing sprites...`)
     const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack)
@@ -65,6 +64,7 @@ export async function generateSpritesheet(
         for(let { left, top, rotate, reference } of filledNodes){
             reference = rotate ? Bitmap.rotate(reference as Bitmap) : reference as Bitmap
             Bitmap.copy(reference, spritesheet, left, top, 0, 0, reference.width, reference.height)
+            if(options.extrude) Bitmap.extrude(spritesheet, options.pack.padding || 0, left, top, reference.width, reference.height)
             exporter.insert(reference, left, top, !!rotate)
         }
 
