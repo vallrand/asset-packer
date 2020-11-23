@@ -31,14 +31,14 @@ export class Exporter {
             pivot: { x: 0.5, y: 0.5 }
         }
     }
-    write(): Buffer {
+    write(downscale: number): Buffer {
         return Buffer.from(JSON.stringify({
             frames: this.spriteMap,
             meta: {
                 image: this.spritesheet.filename,
                 format: 'RGBA8888',
                 size: { w: this.spritesheet.width, h: this.spritesheet.height },
-                scale: 1
+                scale: downscale
             }
         }, null, 0), 'utf8')
     }

@@ -78,7 +78,7 @@ export async function generateSpritesheet(
             filename: spritesheet.filename = spritesheet.filename.replace('[hash]', hash(imageData)),
             buffer: imageData
         })
-        const jsonData = exporter.write()
+        const jsonData = exporter.write(options.downscale)
         files.push({
             filename: exporter.filename = exporter.filename.replace('[hash]', hash(jsonData)),
             buffer: jsonData
