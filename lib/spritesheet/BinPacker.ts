@@ -71,14 +71,16 @@ export class BinPacker<T> {
             ...options
         }
         this.emptyNodes.push({
-            width: this.options.maxWidth - 2 * this.options.border + this.options.padding,
-            height: this.options.maxHeight - 2 * this.options.border + this.options.padding,
+            width: this.options.maxWidth - this.options.border - Math.max(0, this.options.border - this.options.padding),
+            height: this.options.maxHeight - this.options.border - Math.max(0, this.options.border - this.options.padding),
             left: this.options.border,
             top: this.options.border
         })
     }
     insert(item: T, width: number, height: number): RegionNode<T> | null {
-        const node = this.findNode(width + this.options.padding, height + this.options.padding, this.options.rotate)
+        width += Math.min(this.options.padding, Math.max(0, this.options.maxWidth - width))
+        height += Math.min(this.options.padding, Math.max(0, this.options.maxHeight - height))
+        const node = this.findNode(width, height, this.options.rotate)
         if(!node) return null
         node.reference = item
         this.split(node)
