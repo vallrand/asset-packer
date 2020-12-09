@@ -47,6 +47,10 @@ processAssets([
         extrude: false,
         downscale: 1,
         quality: [60, 80],
+        quantize: {
+            colors: 4,
+            threshold: 4
+        },
         pack: {
             maxWidth: 2048,
             maxHeight: 2048,

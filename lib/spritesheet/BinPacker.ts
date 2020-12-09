@@ -41,14 +41,27 @@ const nextPow2 = (value: number) => {
 }
 
 export class BinPacker<T> {
-    public static pack<T extends Rectangle>(items: T[], options: Partial<BinPackerOptions>): BinPacker<T>[] {
-        items.sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height))
-        const bins: BinPacker<T>[] = []
+    public static pack<T extends Rectangle>(
+        items: T[],
+        options: Partial<BinPackerOptions>,
+        comparator: (item: T, group?: T[]) => number
+    ): BinPacker<T>[] {
+        const area = items.map(item => item.width * item.height).reduce((total, area) => total + area, 0)
+        const maxArea = options.maxHeight! * options.maxWidth! || area
+        const bins: BinPacker<T>[] = Array(Math.ceil(area / maxArea)).fill(null)
+
+        items = items.slice().sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height))
         items: for(let i = 0; i < items.length; i++){
             const item = items[i]
-            for(let max = bins.length, j = 0; j <= max; j++){
-                if(j === max) bins.push(new BinPacker(options))
-                if(bins[j].insert(item, item.width, item.height))
+            const weights = bins.map((bin, index) => ({
+                index, weight: comparator(item, bin?.filledNodes.map(node => node.reference!))
+            })).concat({ index: bins.length, weight: comparator(item, undefined) })
+            .sort((a, b) => a.weight - b.weight)
+
+            for(let j = 0; j < weights.length; j++){
+                const index = weights[j].index
+                if(!bins[index]) bins[index] = new BinPacker(options)
+                if(bins[index].insert(item, item.width, item.height))
                     continue items
             }
             throw new Error(`Image ${item.width}x${item.height} exceeds ${bins[0].options.maxWidth}x${bins[0].options.maxHeight}!`)

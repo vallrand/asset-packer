@@ -4,6 +4,7 @@ const PngQuant = require('pngquant')
 
 import { streamToPromise, hash } from '../utilities'
 import { Bitmap } from './Bitmap'
+import { Palette } from './Palette'
 import { Exporter } from './Exporter'
 import { BinPacker, BinPackerOptions } from './BinPacker'
 
@@ -13,6 +14,10 @@ export interface SpritesheetOptions {
     extrude: boolean
     downscale: number
     pack: Partial<BinPackerOptions>
+    quantize: {
+        colors: number
+        threshold: number
+    }
     quality: [number, number]
 }
 
@@ -25,6 +30,7 @@ export async function generateSpritesheet(
         trim: true,
         extrude: false,
         downscale: 1,
+        quantize: { colors: 4, threshold: 4 },
         pack: {},
         quality: [60, 80],
         ...spritesheetOptions
@@ -53,7 +59,15 @@ export async function generateSpritesheet(
         if(options.trim) sprites[i] = Bitmap.trim(sprites[i], 0)
     }
     console.log('\x1b[34m%s\x1b[0m', `Packing sprites...`)
-    const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack)
+    const palettes: Palette[] = sprites.map(sprite => Palette.quantize(sprite.data, { colors: options.quantize.colors }))
+    const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack,
+    function(item: Bitmap, group?: Bitmap[]): number {
+        if(!group) return options.quantize.threshold || 0
+        const palette = palettes[sprites.indexOf(item)]
+        return group.map(item => palettes[sprites.indexOf(item)])
+        .map(subpalette => subpalette.intersection(palette))
+        .reduce((min, distance) => Math.min(min, distance), Infinity)
+    })
     for(let i = 0; i < bins.length; i++){
         const { bounds, filledNodes } = bins[i]
         console.log('\x1b[34m%s\x1b[0m', `Rendering spritesheet ${i+1}/${bins.length}...`)
