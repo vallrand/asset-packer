@@ -10,6 +10,11 @@ export class Bitmap {
         this.size = { width, height }
         this.frame = { x: 0, y: 0, width, height }
     }
+    get opaque(): boolean {
+        for(let i = 0; i < this.data.length; i+=4)
+            if(this.data[i + 3] < 0xFF) return false
+        return true
+    }
     static copy(
         source: Bitmap, target: Bitmap,
         targetX: number, targetY: number,

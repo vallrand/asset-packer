@@ -1,15 +1,14 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import crypto from 'crypto'
-import { Readable } from 'stream'
+import { Stream, Readable, Writable } from 'stream'
 
-export const streamToPromise = (stream: NodeJS.WritableStream) =>
-(buffer: Buffer): Promise<Buffer> => new Promise((resolve, reject) => {
+export const streamToPromise = (stream: Stream | Writable, buffer?: Buffer): Promise<Buffer> => new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
-    Readable.from(buffer)
-    .pipe(stream)
-    .on('data', chunk => chunks.push(chunk))
+    if(buffer) stream = Readable.from(buffer).pipe(stream as Writable)
+    stream
     .on('error', reject)
+    .on('data', chunk => chunks.push(chunk))
     .on('end', () => resolve(Buffer.concat(chunks)))
 })
 

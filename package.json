@@ -27,7 +27,7 @@
   "dependencies": {
     "jpeg-js": "^0.4.2",
     "pngjs": "^6.0.0",
-    "pngquant": "^3.1.0"
+    "pngquant-bin": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.14.6",

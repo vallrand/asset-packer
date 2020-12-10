@@ -1,11 +1,11 @@
 import jpeg from 'jpeg-js'
 import { PNG } from 'pngjs'
-const PngQuant = require('pngquant')
 
-import { streamToPromise, hash } from '../utilities'
+import { hash } from '../utilities'
 import { Bitmap } from './Bitmap'
 import { Palette } from './Palette'
 import { Exporter } from './Exporter'
+import { quantize, QuantizerOptions } from './Quantizer' 
 import { BinPacker, BinPackerOptions } from './BinPacker'
 
 export interface SpritesheetOptions {
@@ -14,11 +14,11 @@ export interface SpritesheetOptions {
     extrude: boolean
     downscale: number
     pack: Partial<BinPackerOptions>
-    quantize: {
+    quantize: Partial<QuantizerOptions>
+    group: {
         colors: number
         threshold: number
     }
-    quality: [number, number]
 }
 
 export async function generateSpritesheet(
@@ -30,9 +30,9 @@ export async function generateSpritesheet(
         trim: true,
         extrude: false,
         downscale: 1,
-        quantize: { colors: 4, threshold: 4 },
+        group: { colors: 4, threshold: 4 },
+        quantize: {},
         pack: {},
-        quality: [60, 80],
         ...spritesheetOptions
     }
     console.log('\x1b[34m%s\x1b[0m', `Decoding images...`)
@@ -59,10 +59,10 @@ export async function generateSpritesheet(
         if(options.trim) sprites[i] = Bitmap.trim(sprites[i], 0)
     }
     console.log('\x1b[34m%s\x1b[0m', `Packing sprites...`)
-    const palettes: Palette[] = sprites.map(sprite => Palette.quantize(sprite.data, { colors: options.quantize.colors }))
+    const palettes: Palette[] = sprites.map(sprite => Palette.quantize(sprite.data, { colors: options.group.colors }))
     const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack,
     function(item: Bitmap, group?: Bitmap[]): number {
-        if(!group) return options.quantize.threshold || 0
+        if(!group) return options.group.threshold || 0
         const palette = palettes[sprites.indexOf(item)]
         return group.map(item => palettes[sprites.indexOf(item)])
         .map(subpalette => subpalette.intersection(palette))
@@ -73,7 +73,8 @@ export async function generateSpritesheet(
         console.log('\x1b[34m%s\x1b[0m', `Rendering spritesheet ${i+1}/${bins.length}...`)
 
         const bitmapData = new PNG({ ...bounds })
-        const spritesheet = new Bitmap(`${options.prefix}.png`, bounds.width, bounds.height, bitmapData.data)
+        const extension = filledNodes.some(node => !node.reference!.opaque) ? 'png' : 'jpg'
+        const spritesheet = new Bitmap(`${options.prefix}.${extension}`, bounds.width, bounds.height, bitmapData.data)
         const exporter = new Exporter(`${options.prefix}.json`, spritesheet)
         for(let { left, top, rotate, reference } of filledNodes){
             reference = rotate ? Bitmap.rotate(reference as Bitmap) : reference as Bitmap
@@ -82,12 +83,10 @@ export async function generateSpritesheet(
             exporter.insert(reference, left, top, !!rotate)
         }
 
-        const imageData = await streamToPromise(new PngQuant([
-            256,
-            '--quality', options.quality.join('-'),
-            '--nofs',
-            '--strip'
-        ]))(PNG.sync.write(bitmapData))
+        const imageData = extension === 'png'
+        ? await quantize(PNG.sync.write(bitmapData), options.quantize)
+        : jpeg.encode(bitmapData, options.quantize.quality || 100).data
+
         files.push({
             filename: spritesheet.filename = spritesheet.filename.replace('[hash]', hash(imageData)),
             buffer: imageData

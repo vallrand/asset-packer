@@ -21,14 +21,17 @@ module.exports = (async function(source?: string, destination?: string, resoluti
     const outputFiles = await processAssets(files, {
         base64: {
             prefix: '[hash]',
-            filter: (filename: string) => !/\.png$/i.test(filename)
+            filter: (filename: string) => !/\.(png|jpg)$/i.test(filename)
         },
         spritesheet: {
             prefix: '[hash]',
             trim: true,
             extrude: false,
             downscale: downscale,
-            quality: [60, 80],
+            quantize: {
+                dithering: false,
+                quality: 80
+            },
             pack: {
                 maxWidth: downscale * 4096,
                 maxHeight: downscale * 4096,

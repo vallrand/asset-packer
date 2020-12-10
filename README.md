@@ -10,7 +10,7 @@ Requires [Node](https://nodejs.org) ver10.17.0
 
  - [pngjs](https://github.com/lukeapage/pngjs)
  - [jpeg-js](https://github.com/eugeneware/jpeg-js)
- - [pngquant](https://github.com/papandreou/node-pngquant)
+ - [pngquant-bin](https://github.com/imagemin/pngquant-bin)
  
 Note: `pngquant-bin` might require additional [dependencies](https://github.com/nodejs/node-gyp#option-1)
 Linux:
@@ -39,15 +39,18 @@ processAssets([
 ], {
     base64: {
         prefix: '[hash]',
-        filter: filename => !/\.png$/i.test(filename)
+        filter: filename => !/\.(png|jpg)$/i.test(filename)
     },
     spritesheet: {
         prefix: '[hash]',
         trim: true,
         extrude: false,
         downscale: 1,
-        quality: [60, 80],
         quantize: {
+            dithering: false,
+            quality: 80,
+        },
+        group: {
             colors: 4,
             threshold: 4
         },
