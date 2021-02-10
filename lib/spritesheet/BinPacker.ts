@@ -44,19 +44,21 @@ export class BinPacker<T> {
     public static pack<T extends Rectangle>(
         items: T[],
         options: Partial<BinPackerOptions>,
-        comparator: (item: T, group?: T[]) => number
+        comparator: (item: T, index: number, group?: T[]) => number
     ): BinPacker<T>[] {
         const area = items.map(item => item.width * item.height).reduce((total, area) => total + area, 0)
         const maxArea = options.maxHeight! * options.maxWidth! || area
-        const bins: BinPacker<T>[] = Array(Math.ceil(area / maxArea)).fill(null)
+        const optimalAmount = Math.ceil(area / maxArea)
+        const bins: BinPacker<T>[] = Array(optimalAmount).fill(null)
 
         items = items.slice().sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height))
         items: for(let i = 0; i < items.length; i++){
             const item = items[i]
             const weights = bins.map((bin, index) => ({
-                index, weight: comparator(item, bin?.filledNodes.map(node => node.reference!))
-            })).concat({ index: bins.length, weight: comparator(item, undefined) })
-            .sort((a, b) => a.weight - b.weight)
+                index, weight: comparator(item, index - optimalAmount, bin?.filledNodes.map(node => node.reference!))
+            })).concat({
+                index: bins.length, weight: comparator(item, bins.length - optimalAmount, undefined)
+            }).sort((a, b) => a.weight - b.weight)
 
             for(let j = 0; j < weights.length; j++){
                 const index = weights[j].index

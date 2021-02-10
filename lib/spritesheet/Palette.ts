@@ -1,15 +1,23 @@
+import { EarthMoverDistance } from './emd'
+
 export const rgb2hex = (r: number, g: number, b: number): string => 
 `#${(0x1000000 + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+export type vec3 = [number,number,number]
+
+function euclideanDistanceSquared(a: vec3, b: vec3): number {
+    const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2]
+    return dx*dx + dy*dy + dz*dz
+}
 
 class Color3DBox {
     public readonly volume: number
     public readonly count: number
-    public readonly average: [number, number, number]
+    public readonly average: vec3
     constructor(
-        private readonly bits: number = 5,
+        public readonly bits: number = 5,
         public readonly histogram: Uint32Array,
-        public readonly min: [number, number, number],
-        public readonly max: [number, number, number]
+        public readonly min: vec3,
+        public readonly max: vec3
     ){
         this.volume = (this.max[0] - this.min[0] + 1) * (this.max[1] - this.min[1] + 1) * (this.max[2] - this.min[2] + 1)
         this.count = 0
@@ -32,6 +40,19 @@ class Color3DBox {
             multiplier * 0.5 * (this.min[1] + this.max[1] + 1) | 0,
             multiplier * 0.5 * (this.min[2] + this.max[2] + 1) | 0
         ]
+    }
+    overlap(box: Color3DBox): number {
+        const sizeX = Math.min(this.max[0] - this.min[0] + 1, box.max[0] - box.min[0] + 1)
+        const sizeY = Math.min(this.max[1] - this.min[1] + 1, box.max[1] - box.min[1] + 1)
+        const sizeZ = Math.min(this.max[2] - this.min[2] + 1, box.max[2] - box.min[2] + 1)
+        const dx = Math.min(this.max[0], box.max[0]) - Math.max(this.min[0], box.min[0])
+        const dy = Math.min(this.max[1], box.max[1]) - Math.max(this.min[1], box.min[1])
+        const dz = Math.min(this.max[2], box.max[2]) - Math.max(this.min[2], box.min[2])
+        return Math.max(
+            1 - dx / sizeX,
+            1 - dy / sizeY,
+            1 - dz / sizeZ
+        )
     }
     distance(red: number, green: number, blue: number): number {
         red >>= 8 - this.bits
@@ -81,8 +102,8 @@ class Color3DBox {
         while(!lookbehind![split]) split++
         for(let count = lookahead[split]; !count && lookbehind![split - 1]; count = lookahead[--split]);
 
-        const maxA = <[number, number, number]> this.max.slice()
-        const minB = <[number, number, number]> this.min.slice()
+        const maxA = <vec3> this.max.slice()
+        const minB = <vec3> this.min.slice()
         maxA[axisA] = split
         minB[axisA] = split + 1
 
@@ -94,8 +115,8 @@ class Color3DBox {
     static fromRGBA(rgba: Uint8Array, options: { bits: number, alphaThreshold: number }): Color3DBox {
         const bitshift = 8 - options.bits
         const histogram = new Uint32Array(1 << 3 * options.bits)
-        const lower: [number, number, number] = [0xFF, 0xFF, 0xFF]
-        const upper: [number, number, number] = [0x00, 0x00, 0x00]
+        const lower: vec3 = [0xFF, 0xFF, 0xFF]
+        const upper: vec3 = [0x00, 0x00, 0x00]
         for(let i = 0; i < rgba.length; i+=4){
             const r = rgba[i + 0] >> bitshift
             const g = rgba[i + 1] >> bitshift
@@ -123,7 +144,7 @@ export interface QuantizationOptions {
 export class Palette {
     static quantize(pixels: Uint8Array, {
         colors = 2,
-        quality = 5,
+        quality = 4,
         alphaThreshold = 0
     }: Partial<QuantizationOptions>): Palette {
         if(colors < 2 || colors > 256) throw new Error(`Invalid options.colors ${colors}`)
@@ -145,23 +166,34 @@ export class Palette {
         iterate(queue, colors, (a, b) => a.count * a.volume - b.count * b.volume)
         return new Palette(queue)
     }
-    private readonly total: number
+    public readonly total: number
     constructor(private readonly boxes: Color3DBox[]){
         this.total = boxes.reduce((total, box) => total + box.count, 0)
     }
     get colors(){ return this.boxes.map(box => rgb2hex(...box.average)) }
-    intersection(palette: Palette): number {
+    get histogram(){ return this.boxes[0].histogram }
+    public static weightedIntersection(paletteU: Palette, paletteV: Palette): number {
         let out = 0
-        for(let i = this.boxes.length - 1; i >= 0; i--){
-            const boxA = this.boxes[i]
-            for(let j = palette.boxes.length - 1; j >= 0; j--){
-                const boxB = palette.boxes[j]
+        for(let i = paletteU.boxes.length - 1; i >= 0; i--){
+            const boxU = paletteU.boxes[i]
+            for(let j = paletteV.boxes.length - 1; j >= 0; j--){
+                const boxV = paletteV.boxes[j]
                 out += Math.min(
-                    boxA.distance(...boxB.average),
-                    boxB.distance(...boxA.average)
-                ) * (boxB.count / palette.total) * (boxA.count / this.total)
+                    boxU.distance(...boxV.average), boxV.distance(...boxU.average)
+                ) * (boxV.count / paletteV.total) * (boxU.count / paletteU.total)
             }
         }
         return out
+    }
+    public static wassersteinDistance(paletteU: Palette, paletteV: Palette): number {
+        return new EarthMoverDistance(
+            paletteU.boxes.length, paletteV.boxes.length,
+            (u, v) => 
+            (0.5 + 0.5 * paletteU.boxes[u].overlap(paletteV.boxes[v])) *
+            euclideanDistanceSquared(paletteU.boxes[u].average, paletteV.boxes[v].average) / 0xFE01
+        ).computeMetric(
+            paletteU.boxes.map(box => box.count / paletteU.total),
+            paletteV.boxes.map(box => box.count / paletteV.total)
+        )
     }
 }

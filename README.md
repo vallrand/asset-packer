@@ -52,7 +52,8 @@ processAssets([
         },
         group: {
             colors: 4,
-            threshold: 4
+            threshold: 4,
+            diminish: 0
         },
         pack: {
             maxWidth: 2048,

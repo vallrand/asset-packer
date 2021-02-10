@@ -18,6 +18,8 @@ export interface SpritesheetOptions {
     group: {
         colors: number
         threshold: number
+        diminish: number
+        algorithm?: number
     }
 }
 
@@ -30,7 +32,7 @@ export async function generateSpritesheet(
         trim: true,
         extrude: false,
         downscale: 1,
-        group: { colors: 4, threshold: 4 },
+        group: { colors: 4, threshold: 0.8, diminish: 0 },
         quantize: {},
         pack: {},
         ...spritesheetOptions
@@ -60,12 +62,14 @@ export async function generateSpritesheet(
     }
     console.log('\x1b[34m%s\x1b[0m', `Packing sprites...`)
     const palettes: Palette[] = sprites.map(sprite => Palette.quantize(sprite.data, { colors: options.group.colors }))
+    const distanceHeuristic = [Palette.wassersteinDistance, Palette.weightedIntersection][options.group.algorithm || 0]
     const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack,
-    function(item: Bitmap, group?: Bitmap[]): number {
-        if(!group) return options.group.threshold || 0
+    function(item: Bitmap, index: number, group?: Bitmap[]): number {
+        if(!group) return Math.max(1, options.group.diminish * index) * options.group.threshold || 0
         const palette = palettes[sprites.indexOf(item)]
-        return group.map(item => palettes[sprites.indexOf(item)])
-        .map(subpalette => subpalette.intersection(palette))
+        const subpalettes = group.map(item => palettes[sprites.indexOf(item)])
+        return subpalettes
+        .map(subpalette => distanceHeuristic(palette, subpalette))
         .reduce((min, distance) => Math.min(min, distance), Infinity)
     })
     for(let i = 0; i < bins.length; i++){
