@@ -19,6 +19,7 @@ export interface SpritesheetOptions {
         colors: number
         threshold: number
         diminish: number
+        opaque: number
         algorithm?: number
     }
 }
@@ -32,7 +33,7 @@ export async function generateSpritesheet(
         trim: true,
         extrude: false,
         downscale: 1,
-        group: { colors: 4, threshold: 0.8, diminish: 0 },
+        group: { colors: 4, threshold: 0.8, diminish: 0, opaque: 0 },
         quantize: {},
         pack: {},
         ...spritesheetOptions
@@ -66,9 +67,10 @@ export async function generateSpritesheet(
     const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack,
     function(item: Bitmap, index: number, group?: Bitmap[]): number {
         if(!group) return Math.max(1, options.group.diminish * index) * options.group.threshold || 0
+        const opaque = group.some(node => node.opaque !== item.opaque) && options.group.opaque || 0
         const palette = palettes[sprites.indexOf(item)]
         const subpalettes = group.map(item => palettes[sprites.indexOf(item)])
-        return subpalettes
+        return opaque + subpalettes
         .map(subpalette => distanceHeuristic(palette, subpalette))
         .reduce((min, distance) => Math.min(min, distance), Infinity)
     })

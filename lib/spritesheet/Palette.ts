@@ -186,6 +186,7 @@ export class Palette {
         return out
     }
     public static wassersteinDistance(paletteU: Palette, paletteV: Palette): number {
+        if(!paletteU.boxes.length || !paletteV.boxes.length) return 0
         return new EarthMoverDistance(
             paletteU.boxes.length, paletteV.boxes.length,
             (u, v) => 

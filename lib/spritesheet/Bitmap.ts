@@ -52,6 +52,8 @@ export class Bitmap {
             top = Math.min(top, y)
             bottom = Math.max(bottom, y)
         }
+        left = Math.min(left, right)
+        top = Math.min(top, bottom)
         if(source.width === right - left + 1 && source.height === bottom - top + 1) return source
 
         const target: Bitmap = new Bitmap(
