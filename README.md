@@ -13,6 +13,7 @@ Requires [Node](https://nodejs.org) ver10.17.0
  - [pngquant-bin](https://github.com/imagemin/pngquant-bin)
  
 Note: `pngquant-bin` might require additional [dependencies](https://github.com/nodejs/node-gyp#option-1)
+
 Linux:
 ```sh
 $ sudo apt-get install libpng-dev

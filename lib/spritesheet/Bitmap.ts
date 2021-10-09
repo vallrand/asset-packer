@@ -1,6 +1,7 @@
 export class Bitmap {
     public frame: { x: number, y: number, width: number, height: number }
     public size: { width: number, height: number }
+    public rotation: number = 0
     constructor(
         public filename: string,
         public readonly width: number,
@@ -14,6 +15,17 @@ export class Bitmap {
         for(let i = 0; i < this.data.length; i+=4)
             if(this.data[i + 3] < 0xFF) return false
         return true
+    }
+    get trimmed(){
+        const left = this.frame.x, top = this.frame.y
+        const right = (this.rotation & 1 ? this.height : this.width) - this.frame.x - this.frame.width
+        const bottom = (this.rotation & 1 ? this.width : this.height) - this.frame.y - this.frame.height
+        switch(this.rotation){
+            case 1: return { left: bottom, right: top, top: left, bottom: right }
+            case 2: return { left: right, right: left, top: bottom, bottom: top }
+            case 3: return { left: top, right: bottom, top: right, bottom: left }
+            case 0: default: return { left, right, top, bottom }
+        }
     }
     static copy(
         source: Bitmap, target: Bitmap,
@@ -62,6 +74,7 @@ export class Bitmap {
             bottom - top + 1
         )
         target.size = source.size
+        target.rotation = source.rotation
         target.frame = {
             x: source.frame.x - left,
             y: source.frame.y - top,
@@ -74,7 +87,11 @@ export class Bitmap {
             0, 0, left, top, target.width, target.height
         )
     }
-    static extrude(source: Bitmap, padding: number, x: number, y: number, width: number, height: number): Bitmap {
+    static extrude(
+        source: Bitmap, padding: number,
+        x: number, y: number, width: number, height: number,
+        trimmed: { top: number, left: number, right: number, bottom: number }
+    ): Bitmap {
         if(!padding) return source
 
         const offset = Math.floor(0.5 * padding)
@@ -82,47 +99,19 @@ export class Bitmap {
         const top = Math.max(0, y - offset)
         const right = Math.min(source.width, x + width + padding - offset)
         const bottom = Math.min(source.height, y + height + padding - offset)
-        for(let c = x - 1; c >= left; c--)
-            Bitmap.copy(source, source, c + 1, top, c, top, 1, bottom - top)
-        for(let c = x + width + 1; c <= right; c++)
-            Bitmap.copy(source, source, c - 1, top, c, top, 1, bottom - top)
-        for(let r = y - 1; r >= top; r--)
-            Bitmap.copy(source, source, left, r + 1, left, r, right - left, 1)
-        for(let r = y + 1; r <= bottom; r++)
-            Bitmap.copy(source, source, left, r - 1, left, r, right - left, 1)
+        if(trimmed.left >= 0) for(let c = x - 1; c >= left; c--)
+            Bitmap.copy(source, source, c, top, c + 1, top, 1, bottom - top)
+        if(trimmed.right >= 0) for(let c = x + width; c < right; c++)
+            Bitmap.copy(source, source, c, top, c - 1, top, 1, bottom - top)
+        if(trimmed.top >= 0) for(let r = y - 1; r >= top; r--)
+            Bitmap.copy(source, source, left, r, left, r + 1, right - left, 1)
+        if(trimmed.bottom >= 0) for(let r = y + height; r < bottom; r++)
+            Bitmap.copy(source, source, left, r, left, r - 1, right - left, 1)
         return source
-    }
-    //TODO: remove deprecated method
-    static pad(source: Bitmap, padding: number, extrude: boolean): Bitmap {
-        if(!padding) return source
-
-        const target: Bitmap = new Bitmap(
-            source.filename,
-            source.width + 2 * padding,
-            source.height + 2 * padding
-        )
-        target.size = source.size
-        target.frame = {
-            x: source.frame.x + padding,
-            y: source.frame.y + padding,
-            width: source.frame.width,
-            height: source.frame.height
-        }
-        Bitmap.copy(source, target, padding, padding, 0, 0, source.width, source.height)
-        if(extrude){
-            for(let x = padding - 1; x >= 0; x--){
-                Bitmap.copy(target, target, x, 0, padding, 0, 1, target.height)
-                Bitmap.copy(target, target, target.width - x - 1, 0, target.width - padding - 1, 0, 1, target.height)
-            }
-            for(let y = padding - 1; y >= 0; y--){
-                Bitmap.copy(target, target, 0, y, 0, padding, target.width, 1)
-                Bitmap.copy(target, target, 0, target.height - y - 1, 0, target.height - padding - 1, target.width, 1)
-            }
-        }
-        return target
     }
     static rotate(source: Bitmap, ccw: boolean = false): Bitmap {
         const target: Bitmap = new Bitmap(source.filename, source.height, source.width)
+        target.rotation = (source.rotation + (ccw ? 3 : 1)) % 4
         target.size = source.size
         target.frame = source.frame
 

@@ -83,9 +83,13 @@ export async function generateSpritesheet(
         const spritesheet = new Bitmap(`${options.prefix}.${extension}`, bounds.width, bounds.height, bitmapData.data)
         const exporter = new Exporter(`${options.prefix}.json`, spritesheet)
         for(let { left, top, rotate, reference } of filledNodes){
-            reference = rotate ? Bitmap.rotate(reference as Bitmap) : reference as Bitmap
+            reference = rotate ? Bitmap.rotate(reference!) : reference!
             Bitmap.copy(reference, spritesheet, left, top, 0, 0, reference.width, reference.height)
-            if(options.extrude) Bitmap.extrude(spritesheet, options.pack.padding || 0, left, top, reference.width, reference.height)
+            if(options.extrude) Bitmap.extrude(
+                spritesheet, options.pack.padding || 0,
+                left, top, reference.width, reference.height,
+                reference!.trimmed
+            )
             exporter.insert(reference, left, top, !!rotate)
         }
 
