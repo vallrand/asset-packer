@@ -1,6 +1,6 @@
 {
   "name": "@wault/asset-packer",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Asset packing and optimization pipeline tools",
   "main": "dist/index.js",
   "bin": "dist/cli.js",

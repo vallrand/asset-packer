@@ -1,5 +1,8 @@
 # Asset Packer
 
+[![Build](https://github.com/vallrand/asset-packer/workflows/publish/badge.svg)](https://github.com/vallrand/asset-packer/actions)
+[![npm version](https://badge.fury.io/js/@wault%2Fasset-packer.svg)](https://www.npmjs.com/package/@wault/asset-packer)
+
 > **WARNING**: This project is under development. Current use is not recommended!
 
 Asset packing and optimization tools.
