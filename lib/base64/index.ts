@@ -13,7 +13,7 @@ const enum Type {
 const regex: { [key: string]: RegExp } = {
     [Type.JSON]: /\.json$/i,
     [Type.XML]: /\.(fnt|xml|html)$/i,
-    [Type.IMAGE]: /\.(png|jpe?g|gif)$/i,
+    [Type.IMAGE]: /\.(png|jpe?g|gif|webp|avif|jxl)$/i,
     [Type.AUDIO]: /\.(mp3|ogg|wav)$/i,
     [Type.VIDEO]: /\.(mp4|webm)$/i
 }
@@ -39,7 +39,8 @@ export interface Base64Options {
 
 export async function packBase64(
     files: Array<{ filename: string, buffer: Buffer }>,
-    base64Options: Partial<Base64Options>
+    base64Options: Partial<Base64Options>,
+    logger?: (message: string) => void
 ){
     const options: Base64Options = {
         prefix: '[hash]',
@@ -47,7 +48,7 @@ export async function packBase64(
         ...base64Options
     }
     const assets: Record<string, string | object> = Object.create(null)
-    console.log('\x1b[34m%s\x1b[0m', `Packing base64 assets...`)
+    if(logger) logger(`Packing base64 assets...`)
 
     for(let i = files.length - 1; i >= 0; i--){
         const { filename, buffer } = files[i]

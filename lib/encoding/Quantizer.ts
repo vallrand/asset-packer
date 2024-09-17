@@ -12,6 +12,8 @@ export interface QuantizerOptions {
 
 export const quantize = (buffer: Buffer, options: Partial<QuantizerOptions>): Promise<Buffer> =>
 new Promise((resolve, reject) => {
+    if(!options) return resolve(buffer)
+
     const args: string[] = []
     args.push('--strip')
     args.push('--speed', String(options.speed || 1))

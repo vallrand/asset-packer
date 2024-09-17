@@ -19,6 +19,7 @@ module.exports = (async function(source?: string, destination?: string, resoluti
     }))
     console.log('\x1b[34m%s\x1b[0m', `Processing ${files.length} files(${downscale})...`)
     const outputFiles = await processAssets(files, {
+        logger: true,
         base64: {
             prefix: '[hash]',
             filter: (filename: string) => !/\.(png|jpg)$/i.test(filename)
@@ -28,10 +29,6 @@ module.exports = (async function(source?: string, destination?: string, resoluti
             trim: true,
             extrude: false,
             downscale: downscale,
-            quantize: {
-                dithering: false,
-                quality: 80
-            },
             pack: {
                 maxWidth: downscale * 4096,
                 maxHeight: downscale * 4096,
@@ -40,6 +37,10 @@ module.exports = (async function(source?: string, destination?: string, resoluti
                 pow2: true,
                 rotate: true
             }
+        },
+        encoder: {
+            dithering: false,
+            quality: 80
         }
     })
 

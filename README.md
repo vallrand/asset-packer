@@ -41,6 +41,7 @@ import { processAssets } from '@wault/asset-packer'
 processAssets([
     { filename: 'file.ext', buffer: Buffer.from() }
 ], {
+    logger: true,
     base64: {
         prefix: '[hash]',
         filter: filename => !/\.(png|jpg)$/i.test(filename)
@@ -50,10 +51,6 @@ processAssets([
         trim: true,
         extrude: false,
         downscale: 1,
-        quantize: {
-            dithering: false,
-            quality: 80,
-        },
         group: {
             colors: 4,
             threshold: 4,
@@ -68,6 +65,10 @@ processAssets([
             pow2: true,
             rotate: true
         }
+    },
+    encoder: {
+        dithering: false,
+        quality: 80,
     }
 })
 .then(files => {

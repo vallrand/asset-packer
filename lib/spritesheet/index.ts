@@ -2,10 +2,10 @@ import jpeg from 'jpeg-js'
 import { PNG } from 'pngjs'
 
 import { hash } from '../utilities'
+import { Encoder, Decoder } from '../encoding'
 import { Bitmap } from './Bitmap'
 import { Palette } from './Palette'
 import { Exporter } from './Exporter'
-import { quantize, QuantizerOptions } from './Quantizer' 
 import { BinPacker, BinPackerOptions } from './BinPacker'
 
 export interface SpritesheetOptions {
@@ -14,7 +14,6 @@ export interface SpritesheetOptions {
     extrude: boolean
     downscale: number
     pack: Partial<BinPackerOptions>
-    quantize: Partial<QuantizerOptions>
     group: {
         colors: number
         threshold: number
@@ -26,7 +25,10 @@ export interface SpritesheetOptions {
 
 export async function generateSpritesheet(
     files: Array<{ filename: string, buffer: Buffer }>,
-    spritesheetOptions: Partial<SpritesheetOptions>
+    spritesheetOptions: Partial<SpritesheetOptions>,
+    decoder: Decoder,
+    encoder: Encoder,
+    logger?: (message: string) => void
 ){
     const options: SpritesheetOptions = {
         prefix: '[hash]',
@@ -34,25 +36,19 @@ export async function generateSpritesheet(
         extrude: false,
         downscale: 1,
         group: { colors: 4, threshold: 0.8, diminish: 0, opaque: 0 },
-        quantize: {},
         pack: {},
         ...spritesheetOptions
     }
-    console.log('\x1b[34m%s\x1b[0m', `Decoding images...`)
+    if(logger) logger(`Decoding images...`)
     const sprites: Bitmap[] = []
     for(let i = files.length - 1; i >= 0; i--){
         const { filename, buffer } = files[i]
-        if(/\.jpe?g$/i.test(filename)){
-            files.splice(i, 1)
-            const { width, height, data } = jpeg.decode(buffer, { useTArray: true, formatAsRGBA: true })
-            sprites.push(new Bitmap(filename, width, height, data))
-        }else if(/\.png$/i.test(filename)){
-            files.splice(i, 1)
-            const { width, height, data } = PNG.sync.read(buffer)
-            sprites.push(new Bitmap(filename, width, height, data))
-        }
+        const decoded = await decoder({ buffer, filename })
+        if(!decoded) continue
+        files.splice(i, 1)
+        sprites.push(new Bitmap(filename, decoded.width, decoded.height, decoded.data))
     }
-    console.log('\x1b[34m%s\x1b[0m', `Processing ${sprites.length} images...`)
+    if(logger) logger(`Processing ${sprites.length} images...`)
     for(let i = 0; i < sprites.length; i++){
         if(options.downscale < 1) sprites[i] = Bitmap.downsample(
             sprites[i],
@@ -61,7 +57,7 @@ export async function generateSpritesheet(
         )
         if(options.trim) sprites[i] = Bitmap.trim(sprites[i], 0)
     }
-    console.log('\x1b[34m%s\x1b[0m', `Packing sprites...`)
+    if(logger) logger(`Packing sprites...`)
     const palettes: Palette[] = sprites.map(sprite => Palette.quantize(sprite.data, { colors: options.group.colors }))
     const distanceHeuristic = [Palette.wassersteinDistance, Palette.weightedIntersection][options.group.algorithm || 0]
     const bins: BinPacker<Bitmap>[] = BinPacker.pack(sprites, options.pack,
@@ -76,11 +72,11 @@ export async function generateSpritesheet(
     })
     for(let i = 0; i < bins.length; i++){
         const { bounds, filledNodes } = bins[i]
-        console.log('\x1b[34m%s\x1b[0m', `Rendering spritesheet ${i+1}/${bins.length}...`)
+        if(logger) logger(`Rendering spritesheet ${i+1}/${bins.length}...`)
 
         const bitmapData = new PNG({ ...bounds })
-        const extension = filledNodes.some(node => !node.reference!.opaque) ? 'png' : 'jpg'
-        const spritesheet = new Bitmap(`${options.prefix}.${extension}`, bounds.width, bounds.height, bitmapData.data)
+        const alpha = filledNodes.some(node => !node.reference!.opaque)
+        const spritesheet = new Bitmap(`${options.prefix}.[format]`, bounds.width, bounds.height, bitmapData.data)
         const exporter = new Exporter(`${options.prefix}.json`, spritesheet)
         for(let { left, top, rotate, reference } of filledNodes){
             reference = rotate ? Bitmap.rotate(reference!) : reference!
@@ -92,10 +88,9 @@ export async function generateSpritesheet(
             )
             exporter.insert(reference, left, top, !!rotate)
         }
-
-        const imageData = extension === 'png'
-        ? await quantize(PNG.sync.write(bitmapData), options.quantize)
-        : jpeg.encode(bitmapData, options.quantize.quality || 100).data
+        
+        const { buffer: imageData, format } = await encoder(Object.assign(bitmapData, { alpha }))
+        spritesheet.filename = spritesheet.filename.replace('[format]', format)
 
         files.push({
             filename: spritesheet.filename = spritesheet.filename.replace('[hash]', hash(imageData)),
